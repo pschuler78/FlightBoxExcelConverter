@@ -48,8 +48,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DataRemapper.cs" />
     <Compile Include="Enums\TypeOfTraffic.cs" />
+    <Compile Include="Exporter\ProffixDataCsvExporter.cs" />
     <Compile Include="FlightBoxExcelConverter.cs" />
     <Compile Include="LogEventArgs.cs" />
     <Compile Include="MainForm.cs">
@@ -58,7 +58,7 @@
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="DataCleaner.cs" />
+    <Compile Include="DataManager.cs" />
     <Compile Include="Objects\ProffixData.cs" />
     <Compile Include="Objects\FlightBoxData.cs" />
     <Compile Include="Program.cs" />

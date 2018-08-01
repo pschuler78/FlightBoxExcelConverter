@@ -3,22 +3,19 @@
   <Profiles />
   <Settings>
     <Setting Name="DefaultImportFileName" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">C:\Projects\FlightBoxExcelConverter\src\FlightBoxExcelConverter\data\ARP_LSZK_062018.csv</Value>
-    </Setting>
-    <Setting Name="DefaultExportFileName" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">C:\Projects\FlightBoxExcelConverter\src\FlightBoxExcelConverter\data\Export.csv</Value>
+      <Value Profile="(Default)">ARP.csv</Value>
     </Setting>
     <Setting Name="MemberListFileName" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">C:\Projects\FlightBoxExcelConverter\src\FlightBoxExcelConverter\data\MemberList.csv</Value>
+      <Value Profile="(Default)">MemberList.csv</Value>
     </Setting>
     <Setting Name="NoLdgTaxMembersFileName" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">C:\Projects\FlightBoxExcelConverter\src\FlightBoxExcelConverter\data\NoLdgTaxMembers.csv</Value>
-    </Setting>
-    <Setting Name="NoLdgTaxTypeTraffic" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">C:\Projects\FlightBoxExcelConverter\src\FlightBoxExcelConverter\data\NoLdgTaxTypeTraffic.csv</Value>
+      <Value Profile="(Default)">NoLdgTaxMembers.csv</Value>
     </Setting>
     <Setting Name="MemberNumberRemappingFileName" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">C:\Projects\FlightBoxExcelConverter\src\FlightBoxExcelConverter\data\MemberNumberRemapping.csv</Value>
+      <Value Profile="(Default)">MemberNumberRemapping.csv</Value>
+    </Setting>
+    <Setting Name="DefaultExportFolderName" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">C:\temp\</Value>
     </Setting>
   </Settings>
 </SettingsFile>

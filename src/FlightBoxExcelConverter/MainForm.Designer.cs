@@ -31,9 +31,9 @@
             this.labelImportFile = new System.Windows.Forms.Label();
             this.textBoxImportFileName = new System.Windows.Forms.TextBox();
             this.buttonBrowseImportFile = new System.Windows.Forms.Button();
-            this.labelExportFile = new System.Windows.Forms.Label();
-            this.textBoxExportFileName = new System.Windows.Forms.TextBox();
-            this.buttonBrowseExportFile = new System.Windows.Forms.Button();
+            this.labelExportPath = new System.Windows.Forms.Label();
+            this.textBoxExportFolderName = new System.Windows.Forms.TextBox();
+            this.buttonBrowseExportFolder = new System.Windows.Forms.Button();
             this.buttonConvert = new System.Windows.Forms.Button();
             this.textBoxLog = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
@@ -64,31 +64,31 @@
             this.buttonBrowseImportFile.UseVisualStyleBackColor = true;
             this.buttonBrowseImportFile.Click += new System.EventHandler(this.buttonBrowseImportFile_Click);
             // 
-            // labelExportFile
+            // labelExportPath
             // 
-            this.labelExportFile.AutoSize = true;
-            this.labelExportFile.Location = new System.Drawing.Point(46, 78);
-            this.labelExportFile.Name = "labelExportFile";
-            this.labelExportFile.Size = new System.Drawing.Size(68, 13);
-            this.labelExportFile.TabIndex = 0;
-            this.labelExportFile.Text = "Export-Datei:";
+            this.labelExportPath.AutoSize = true;
+            this.labelExportPath.Location = new System.Drawing.Point(46, 78);
+            this.labelExportPath.Name = "labelExportPath";
+            this.labelExportPath.Size = new System.Drawing.Size(61, 13);
+            this.labelExportPath.TabIndex = 0;
+            this.labelExportPath.Text = "Exportpfad:";
             // 
-            // textBoxExportFileName
+            // textBoxExportFolderName
             // 
-            this.textBoxExportFileName.Location = new System.Drawing.Point(133, 75);
-            this.textBoxExportFileName.Name = "textBoxExportFileName";
-            this.textBoxExportFileName.Size = new System.Drawing.Size(421, 20);
-            this.textBoxExportFileName.TabIndex = 1;
+            this.textBoxExportFolderName.Location = new System.Drawing.Point(133, 75);
+            this.textBoxExportFolderName.Name = "textBoxExportFolderName";
+            this.textBoxExportFolderName.Size = new System.Drawing.Size(421, 20);
+            this.textBoxExportFolderName.TabIndex = 1;
             // 
-            // buttonBrowseExportFile
+            // buttonBrowseExportFolder
             // 
-            this.buttonBrowseExportFile.Location = new System.Drawing.Point(569, 73);
-            this.buttonBrowseExportFile.Name = "buttonBrowseExportFile";
-            this.buttonBrowseExportFile.Size = new System.Drawing.Size(34, 23);
-            this.buttonBrowseExportFile.TabIndex = 2;
-            this.buttonBrowseExportFile.Text = "...";
-            this.buttonBrowseExportFile.UseVisualStyleBackColor = true;
-            this.buttonBrowseExportFile.Click += new System.EventHandler(this.buttonBrowseExportFile_Click);
+            this.buttonBrowseExportFolder.Location = new System.Drawing.Point(569, 73);
+            this.buttonBrowseExportFolder.Name = "buttonBrowseExportFolder";
+            this.buttonBrowseExportFolder.Size = new System.Drawing.Size(34, 23);
+            this.buttonBrowseExportFolder.TabIndex = 2;
+            this.buttonBrowseExportFolder.Text = "...";
+            this.buttonBrowseExportFolder.UseVisualStyleBackColor = true;
+            this.buttonBrowseExportFolder.Click += new System.EventHandler(this.buttonBrowseExportFolder_Click);
             // 
             // buttonConvert
             // 
@@ -119,10 +119,10 @@
             this.ClientSize = new System.Drawing.Size(800, 450);
             this.Controls.Add(this.textBoxLog);
             this.Controls.Add(this.buttonConvert);
-            this.Controls.Add(this.buttonBrowseExportFile);
+            this.Controls.Add(this.buttonBrowseExportFolder);
             this.Controls.Add(this.buttonBrowseImportFile);
-            this.Controls.Add(this.textBoxExportFileName);
-            this.Controls.Add(this.labelExportFile);
+            this.Controls.Add(this.textBoxExportFolderName);
+            this.Controls.Add(this.labelExportPath);
             this.Controls.Add(this.textBoxImportFileName);
             this.Controls.Add(this.labelImportFile);
             this.Name = "MainForm";
@@ -137,9 +137,9 @@
         private System.Windows.Forms.Label labelImportFile;
         private System.Windows.Forms.TextBox textBoxImportFileName;
         private System.Windows.Forms.Button buttonBrowseImportFile;
-        private System.Windows.Forms.Label labelExportFile;
-        private System.Windows.Forms.TextBox textBoxExportFileName;
-        private System.Windows.Forms.Button buttonBrowseExportFile;
+        private System.Windows.Forms.Label labelExportPath;
+        private System.Windows.Forms.TextBox textBoxExportFolderName;
+        private System.Windows.Forms.Button buttonBrowseExportFolder;
         private System.Windows.Forms.Button buttonConvert;
         private System.Windows.Forms.TextBox textBoxLog;
     }

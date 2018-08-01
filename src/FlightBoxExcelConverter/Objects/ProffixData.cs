@@ -14,6 +14,7 @@ namespace FlightBoxExcelConverter.Objects
         public ProffixData(FlightBoxData flightBoxData)
         {
             FlightBoxData = flightBoxData;
+            MemberNumber = flightBoxData.MemberNumber;
         }
 
         /// <summary>

@@ -25,8 +25,7 @@ namespace FlightBoxExcelConverter.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Projects\\FlightBoxExcelConverter\\src\\FlightBoxExcelConverter\\data\\ARP_LSZK_062" +
-            "018.csv")]
+        [global::System.Configuration.DefaultSettingValueAttribute("ARP.csv")]
         public string DefaultImportFileName {
             get {
                 return ((string)(this["DefaultImportFileName"]));
@@ -35,17 +34,7 @@ namespace FlightBoxExcelConverter.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Projects\\FlightBoxExcelConverter\\src\\FlightBoxExcelConverter\\data\\Export.csv")]
-        public string DefaultExportFileName {
-            get {
-                return ((string)(this["DefaultExportFileName"]));
-            }
-        }
-        
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Projects\\FlightBoxExcelConverter\\src\\FlightBoxExcelConverter\\data\\MemberList.c" +
-            "sv")]
+        [global::System.Configuration.DefaultSettingValueAttribute("MemberList.csv")]
         public string MemberListFileName {
             get {
                 return ((string)(this["MemberListFileName"]));
@@ -54,8 +43,7 @@ namespace FlightBoxExcelConverter.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Projects\\FlightBoxExcelConverter\\src\\FlightBoxExcelConverter\\data\\NoLdgTaxMemb" +
-            "ers.csv")]
+        [global::System.Configuration.DefaultSettingValueAttribute("NoLdgTaxMembers.csv")]
         public string NoLdgTaxMembersFileName {
             get {
                 return ((string)(this["NoLdgTaxMembersFileName"]));
@@ -64,21 +52,19 @@ namespace FlightBoxExcelConverter.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Projects\\FlightBoxExcelConverter\\src\\FlightBoxExcelConverter\\data\\NoLdgTaxType" +
-            "Traffic.csv")]
-        public string NoLdgTaxTypeTraffic {
+        [global::System.Configuration.DefaultSettingValueAttribute("MemberNumberRemapping.csv")]
+        public string MemberNumberRemappingFileName {
             get {
-                return ((string)(this["NoLdgTaxTypeTraffic"]));
+                return ((string)(this["MemberNumberRemappingFileName"]));
             }
         }
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Projects\\FlightBoxExcelConverter\\src\\FlightBoxExcelConverter\\data\\MemberNumber" +
-            "Remapping.csv")]
-        public string MemberNumberRemappingFileName {
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\temp\\")]
+        public string DefaultExportFolderName {
             get {
-                return ((string)(this["MemberNumberRemappingFileName"]));
+                return ((string)(this["DefaultExportFolderName"]));
             }
         }
     }

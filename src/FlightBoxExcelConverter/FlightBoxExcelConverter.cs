@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Permissions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FlightBoxExcelConverter.Enums;
+using FlightBoxExcelConverter.Exporter;
 using FlightBoxExcelConverter.Objects;
 
 namespace FlightBoxExcelConverter
@@ -18,22 +20,21 @@ namespace FlightBoxExcelConverter
 
         public string ImportFileName { get; set; }
 
-        public string ExportFileName { get; set; }
+        public string ExportFolderName { get; set; }
+
+        private DateTime CreationTimeStamp { get; set; }
 
         public bool HasExportError { get; set; }
 
         public string ExportErrorMessage { get; set; }
 
-        public DataCleaner _dataCleaner;
+        private DataManager _dataManager;
 
-        public DataRemapper _dataRemapper;
-
-        public FlightBoxExcelConverter(string importFileName, string exportFileName)
+        public FlightBoxExcelConverter(string importFileName, string exportFolderName)
         {
             ImportFileName = importFileName;
-            ExportFileName = exportFileName;
-            _dataCleaner = new DataCleaner();
-            _dataRemapper = new DataRemapper();
+            ExportFolderName = exportFolderName;
+            _dataManager = new DataManager();
         }
 
         public void Convert()
@@ -42,34 +43,103 @@ namespace FlightBoxExcelConverter
             {
                 var flightBoxDataList = ReadFile();
                 var proffixDataList = new List<ProffixData>();
+                CreationTimeStamp = DateTime.Now;
+
+                OnLogEventRaised("Bereinige Basis-Daten...");
 
                 foreach (var flightBoxData in flightBoxDataList)
                 {
-                    CompleteMemberNumbers(flightBoxData);
-                }
+                    var proffixData = new ProffixData(flightBoxData);
 
-                foreach (var flightBoxData in flightBoxDataList)
-                {
-                    CleanupData(flightBoxData);
-                }
-
-                foreach (var flightBoxData in flightBoxDataList)
-                {
-                    var proffixData = ConvertData(flightBoxData);
-                    if (proffixData == null)
+                    // try to find MemberNumber based on name if no MemberNumber is set
+                    if (string.IsNullOrWhiteSpace(flightBoxData.MemberNumber) &&
+                         _dataManager.FindLastnameAndSetMemberNumber(proffixData))
                     {
-                        OnLogEventRaised($"Fehler beim Erstellen der Proffix Daten. Daten in Zeile {flightBoxData.LineNumber} sind fehlerhaft.");
-                        continue;
+                        OnLogEventRaised(
+                            $"MemberNumber {proffixData.MemberNumber} für {flightBoxData.Lastname} mit {flightBoxData.Immatriculation} gesetzt (Zeile: {flightBoxData.LineNumber}).");
                     }
 
+                    // set MemberNumber based on immatriculation
+                    if (_dataManager.FindImmatriculationAndMapMemberNumber(proffixData))
+                    {
+                        OnLogEventRaised($"Setze spezielle Mitgliedernummer für {proffixData.FlightBoxData.Immatriculation} (Zeile: {flightBoxData.LineNumber}): Alte Mitgliedernummer {proffixData.FlightBoxData.MemberNumber}, neue Mitgliedernummer {proffixData.MemberNumber}");
+                    }
+                    
                     proffixDataList.Add(proffixData);
                 }
 
-                OnLogEventRaised($"Exportiere Daten in Datei: {ExportFileName}");
                 Thread.Sleep(50);
 
-                WriteFile(proffixDataList);
-                OnLogEventRaised($"Daten erfolgreich exportiert.");
+                WriteBaseFile(proffixDataList);
+
+                Thread.Sleep(50);
+
+                foreach (var proffixData in proffixDataList)
+                {
+                    if (_dataManager.IsNoLdgTaxMember(proffixData))
+                    {
+                        proffixData.FlightBoxData.IgnoreLandingTax = true;
+                    }
+
+                    if (proffixData.MemberNumber == "999605" &&
+                        proffixData.FlightBoxData.TypeOfTraffic == (int) TypeOfTraffic.Instruction)
+                    {
+                        // Heli Sitterdorf is always private tax not training
+                        proffixData.FlightBoxData.TypeOfTraffic = (int) TypeOfTraffic.Private;
+                    }
+
+                    if ((proffixData.MemberNumber == "999998" || proffixData.MemberNumber == "383909") &&
+                        proffixData.FlightBoxData.TypeOfTraffic == (int)TypeOfTraffic.Instruction)
+                    {
+                        // Stoffel Aviation is external on instruction
+                        proffixData.FlightBoxData.IsHomebased = false;
+                    }
+
+                    //TODO: Handle maintenance flights from Seiferle
+
+                    // filtering for tow flights and departure movemements are handled within the FlightBoxData class directly
+
+                    CalculateLandingTax(proffixData);
+                }
+
+                Thread.Sleep(50);
+                var folder = ExportFolderName + CreationTimeStamp.ToString("yyyy-MM-dd") + "\\";
+                var exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Proffix.csv");
+                var listToExport = proffixDataList.Where(x => x.FlightBoxData.IsDepartureMovement == false &&
+                                                              x.FlightBoxData.IsMaintenanceFlight == false &&
+                                                              x.FlightBoxData.IsTowFlight == false &&
+                                                              x.FlightBoxData.IgnoreLandingTax == false)
+                                                              .ToList();
+                OnLogEventRaised($"Exportiere Proffix-Daten in Datei: {exportFilename}");
+                var exporter = new ProffixDataCsvExporter(exportFilename, listToExport);
+                exporter.Export();
+                OnLogEventRaised($"{exporter.NumberOfLinesExported} Proffix-Daten erfolgreich exportiert.");
+
+                Thread.Sleep(50);
+
+                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Proffix_Exclusion.csv");
+                listToExport = proffixDataList.Where(x => x.FlightBoxData.IsDepartureMovement ||
+                                                          x.FlightBoxData.IsMaintenanceFlight ||
+                                                          x.FlightBoxData.IsTowFlight ||
+                                                          x.FlightBoxData.IgnoreLandingTax)
+                    .ToList();
+                OnLogEventRaised($"Exportiere Nicht-Proffix-Daten in Datei: {exportFilename}");
+                exporter = new ProffixDataCsvExporter(exportFilename, listToExport);
+                exporter.Export();
+                OnLogEventRaised($"{exporter.NumberOfLinesExported} Nicht-Proffix-Daten erfolgreich exportiert.");
+
+                Thread.Sleep(50);
+
+                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Proffix_With_Remarks.csv");
+                listToExport = proffixDataList.Where(x => string.IsNullOrWhiteSpace(x.FlightBoxData.Remarks) == false)
+                    .ToList();
+                OnLogEventRaised($"Exportiere Daten mit Bemerkungen in Datei: {exportFilename}");
+                exporter = new ProffixDataCsvExporter(exportFilename, listToExport);
+                exporter.Export();
+                OnLogEventRaised($"{exporter.NumberOfLinesExported} Daten mit Bemerkungen erfolgreich exportiert.");
+
+                Thread.Sleep(50);
+
                 ExportFinished?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception e)
@@ -81,12 +151,200 @@ namespace FlightBoxExcelConverter
             }
         }
 
-        private void WriteFile(List<ProffixData> proffixDataList)
+        private void CalculateLandingTax(ProffixData proffixData)
         {
-            using (var w = new StreamWriter(ExportFileName))
+            // set Article number in Proffix data
+            if (proffixData.FlightBoxData.TypeOfTraffic == (int)TypeOfTraffic.Instruction)
+            {
+                proffixData.ArticleNr = "1039"; //Landetaxen Speck Schulung
+            }
+            else
+            {
+                proffixData.ArticleNr = "1037"; //Landetaxen Speck (Charter)
+            }
+
+            // calculate quantity of landings in Proffix data
+            if (proffixData.FlightBoxData.MovementType == "A") //Arrival
+            {
+                proffixData.ArticleQuantity = System.Convert.ToDecimal((proffixData.FlightBoxData.NrOfMovements + 1) / 2);
+            }
+            else if (proffixData.FlightBoxData.MovementType == "V") //circuits
+            {
+                proffixData.ArticleQuantity = System.Convert.ToDecimal(proffixData.FlightBoxData.NrOfMovements / 2);
+            }
+            else
+            {
+                proffixData.ArticleQuantity = 0;
+            }
+
+            proffixData.VfsArticleNumber = "1003";
+            proffixData.VfsPrice = 1.0m;
+            proffixData.VfsQuantity = proffixData.ArticleQuantity; //is same formula as for landing tax quantity calculation
+
+            // calculate price for SchSpeck
+            if (proffixData.FlightBoxData.IsHomebased && proffixData.FlightBoxData.TypeOfTraffic == (int)TypeOfTraffic.Instruction)
+            {
+                proffixData.SchHome = 0;
+            }
+            else
+            {
+                proffixData.SchHome = 0;
+            }
+
+            // calculate price for SchFremd
+            if (proffixData.FlightBoxData.TypeOfTraffic == (int)TypeOfTraffic.Instruction
+                && proffixData.FlightBoxData.IsHomebased == false)
+            {
+                if (proffixData.FlightBoxData.MaxTakeOffWeight < 1001)
+                {
+                    proffixData.SchExternal = 8.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1251)
+                {
+                    proffixData.SchExternal = 12.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1501)
+                {
+                    proffixData.SchExternal = 15.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 2001)
+                {
+                    proffixData.SchExternal = 20.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight > 2000)
+                {
+                    proffixData.SchExternal = 30.0m;
+                }
+                else
+                {
+                    proffixData.SchExternal = 0;
+                }
+            }
+            else
+            {
+                proffixData.SchExternal = 0;
+            }
+
+
+            // calculate price for HB
+            if (proffixData.FlightBoxData.IsHomebased
+                && proffixData.FlightBoxData.TypeOfTraffic != (int)TypeOfTraffic.Instruction)
+            {
+                if (proffixData.FlightBoxData.MaxTakeOffWeight < 751)
+                {
+                    proffixData.LdgTaxHomebased = 12.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1001)
+                {
+                    proffixData.LdgTaxHomebased = 15.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1251)
+                {
+                    proffixData.LdgTaxHomebased = 17.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1501)
+                {
+                    proffixData.LdgTaxHomebased = 20.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 2001)
+                {
+                    proffixData.LdgTaxHomebased = 25.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight > 2000)
+                {
+                    proffixData.LdgTaxHomebased = 35.0m;
+                }
+                else
+                {
+                    proffixData.LdgTaxHomebased = 0;
+                }
+            }
+            else
+            {
+                proffixData.LdgTaxHomebased = 0;
+            }
+
+
+            // calculate price for Fremd
+            if (proffixData.FlightBoxData.IsHomebased == false
+                && proffixData.FlightBoxData.TypeOfTraffic != (int)TypeOfTraffic.Instruction)
+            {
+                if (proffixData.FlightBoxData.MaxTakeOffWeight < 751)
+                {
+                    proffixData.LdgTaxExternal = 17.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1001)
+                {
+                    proffixData.LdgTaxExternal = 20.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1251)
+                {
+                    proffixData.LdgTaxExternal = 22.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1501)
+                {
+                    proffixData.LdgTaxExternal = 25.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 2001)
+                {
+                    proffixData.LdgTaxExternal = 30.0m;
+                }
+                else if (proffixData.FlightBoxData.MaxTakeOffWeight > 2000)
+                {
+                    proffixData.LdgTaxExternal = 40.0m;
+                }
+                else
+                {
+                    proffixData.LdgTaxExternal = 0;
+                }
+            }
+            else
+            {
+                proffixData.LdgTaxExternal = 0;
+            }
+
+            if (proffixData.FlightBoxData.Immatriculation == "YLLEV" ||
+                proffixData.FlightBoxData.Immatriculation == "LYTED" ||
+                proffixData.FlightBoxData.Immatriculation == "LYMHC")
+            {
+                //Antonov AN-2
+                proffixData.LdgTaxExternal = 80.0m;
+            }
+
+            if (proffixData.FlightBoxData.Immatriculation == "HBZNP" ||
+                proffixData.FlightBoxData.Immatriculation == "HBZNM")
+            {
+                // Helicopter over 78dB --> double landing tax price
+
+                if (proffixData.SchHome > 0) proffixData.SchHome = proffixData.SchHome * 2;
+                if (proffixData.SchExternal > 0) proffixData.SchExternal = proffixData.SchExternal * 2;
+                if (proffixData.LdgTaxHomebased > 0) proffixData.LdgTaxHomebased = proffixData.LdgTaxHomebased * 2;
+                if (proffixData.LdgTaxExternal > 0) proffixData.LdgTaxExternal = proffixData.LdgTaxExternal * 2;
+            }
+
+            //sum up all landing tax fees
+            proffixData.ArticlePrice = proffixData.SchHome + proffixData.SchExternal + proffixData.LdgTaxHomebased +
+                                       proffixData.LdgTaxExternal;
+        }
+
+        private void WriteBaseFile(List<ProffixData> proffixDataList)
+        {
+            var folder = ExportFolderName + CreationTimeStamp.ToString("yyyy-MM-dd") + "\\";
+
+            if (Directory.Exists(folder) == false)
+            {
+                Directory.CreateDirectory(folder);
+            }
+
+            var exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Base.csv");
+            var nrOfLinesExported = 0;
+
+            OnLogEventRaised($"Exportiere Basis-Daten in Datei: {exportFilename}");
+
+            using (var w = new StreamWriter(exportFilename))
             {
                 var header =
-                    "ARP,TYPMO,ACREG,TYPTR,NUMMO,ORIDE,PAX,DATMO,TIMMO,PIMO,TYPPI,DIRDE,CID,CDT,CDM,KEY,Mitgliedernummer,LASTNAME,MTOW,CLUB,HOME_BASE,ORIGINAL_ORIDE,,Mitgliedernummer,ArtikelNr,ArtMenge,ArtPreis,VFSArtikelNr,VFSMenge,VFSPreis,SchSpeck,SchFremd,HB,Fremd";
+                    "ARP,TYPMO,ACREG,TYPTR,NUMMO,ORIDE,PAX,DATMO,TIMMO,PIMO,TYPPI,DIRDE,CID,CDT,CDM,KEY,Mitgliedernummer,LASTNAME,MTOW,CLUB,HOME_BASE,ORIGINAL_ORIDE";
                 w.WriteLine(header);
 
                 foreach (var proffixData in proffixDataList)
@@ -138,220 +396,14 @@ namespace FlightBoxExcelConverter
                     sb.Append(proffixData.FlightBoxData.OriginalLocation);
                     sb.Append(",");
                     sb.Append(proffixData.FlightBoxData.Remarks);
-                    sb.Append(",");
-                    sb.Append(proffixData.MemberNumber);
-                    sb.Append(",");
-                    sb.Append(proffixData.ArticleNr);
-                    sb.Append(",");
-                    sb.Append(proffixData.ArticleQuantity.ToString("0"));
-                    sb.Append(",");
-                    sb.Append(proffixData.ArticlePrice.ToString("0.00"));
-                    sb.Append(",");
-                    sb.Append(proffixData.VfsArticleNumber);
-                    sb.Append(",");
-                    sb.Append(proffixData.VfsQuantity.ToString("0"));
-                    sb.Append(",");
-                    sb.Append(proffixData.VfsPrice.ToString("0.00"));
-                    sb.Append(",");
-                    sb.Append(proffixData.SchHome.ToString("0.00"));
-                    sb.Append(",");
-                    sb.Append(proffixData.SchExternal.ToString("0.00"));
-                    sb.Append(",");
-                    sb.Append(proffixData.LdgTaxHomebased.ToString("0.00"));
-                    sb.Append(",");
-                    sb.Append(proffixData.LdgTaxExternal.ToString("0.00"));
                     w.WriteLine(sb.ToString());
+                    nrOfLinesExported++;
                 }
 
                 w.Flush();
             }
-        }
 
-        private ProffixData ConvertData(FlightBoxData flightBoxData)
-        {
-            var proffixData = new ProffixData(flightBoxData);
-
-            // set MemberNumber in Proffix data
-            if (_dataRemapper.FindImmatruculationAndMapMemberNumber(proffixData))
-            {
-                OnLogEventRaised($"Setze spezielle Mitgliedernummer für {proffixData.FlightBoxData.Immatriculation} (Zeile: {flightBoxData.LineNumber}): Alte Mitgliedernummer {proffixData.FlightBoxData.MemberNumber}, neue Mitgliedernummer {proffixData.MemberNumber}");
-            }
-            else
-            {
-                proffixData.MemberNumber = proffixData.FlightBoxData.MemberNumber;
-            }
-
-            // set Article number in Proffix data
-            if (proffixData.FlightBoxData.TypeOfTraffic == (int)TypeOfTraffic.Instruction)
-            {
-                proffixData.ArticleNr = "1039"; //Landetaxen Speck Schulung
-            }
-            else
-            {
-                proffixData.ArticleNr = "1037"; //Landetaxen Speck (Charter)
-            }
-
-            // calculate quantity of landings in Proffix data
-            if (proffixData.FlightBoxData.MovementType == "A") //Arrival
-            {
-                proffixData.ArticleQuantity = System.Convert.ToDecimal((proffixData.FlightBoxData.NrOfMovements + 1) / 2);
-            }
-            else if (proffixData.FlightBoxData.MovementType == "V") //circuits
-            {
-                proffixData.ArticleQuantity = System.Convert.ToDecimal(proffixData.FlightBoxData.NrOfMovements / 2);
-            }
-            else
-            {
-                proffixData.ArticleQuantity = 0;
-            }
-
-            proffixData.VfsArticleNumber = "1003";
-            proffixData.VfsPrice = 1.0m;
-            proffixData.VfsQuantity = proffixData.ArticleQuantity; //is same formula as for landing tax quantity calculation
-
-            // calculate price for SchSpeck
-            if (proffixData.FlightBoxData.IsHomebased && proffixData.FlightBoxData.TypeOfTraffic == (int)TypeOfTraffic.Instruction) 
-            {
-                proffixData.SchHome = 0;
-            }
-            else
-            {
-                proffixData.SchHome = 0;
-            }
-
-            // calculate price for SchFremd
-            if (proffixData.FlightBoxData.TypeOfTraffic == (int) TypeOfTraffic.Instruction
-                && proffixData.FlightBoxData.IsHomebased == false)
-            {
-                if (proffixData.FlightBoxData.MaxTakeOffWeight < 1001)
-                {
-                    proffixData.SchExternal = 8.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1251)
-                {
-                    proffixData.SchExternal = 12.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1501)
-                {
-                    proffixData.SchExternal = 15.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 2001)
-                {
-                    proffixData.SchExternal = 20.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight > 2000)
-                {
-                    proffixData.SchExternal = 30.0m;
-                }
-                else
-                {
-                    proffixData.SchExternal = 0;
-                }
-            }
-            else
-            {
-                proffixData.SchExternal = 0;
-            }
-
-
-            // calculate price for HB
-            if (proffixData.FlightBoxData.IsHomebased
-                && proffixData.FlightBoxData.TypeOfTraffic != (int) TypeOfTraffic.Instruction)
-            {
-                if (proffixData.FlightBoxData.MaxTakeOffWeight < 751)
-                {
-                    proffixData.LdgTaxHomebased = 12.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1001)
-                {
-                    proffixData.LdgTaxHomebased = 15.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1251)
-                {
-                    proffixData.LdgTaxHomebased = 17.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1501)
-                {
-                    proffixData.LdgTaxHomebased = 20.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 2001)
-                {
-                    proffixData.LdgTaxHomebased = 25.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight > 2000)
-                {
-                    proffixData.LdgTaxHomebased = 35.0m;
-                }
-                else
-                {
-                    proffixData.LdgTaxHomebased = 0;
-                }
-            }
-            else
-            {
-                proffixData.LdgTaxHomebased = 0;
-            }
-
-
-            // calculate price for Fremd
-            if (proffixData.FlightBoxData.IsHomebased == false
-                && proffixData.FlightBoxData.TypeOfTraffic != (int)TypeOfTraffic.Instruction)
-            {
-                if (proffixData.FlightBoxData.MaxTakeOffWeight < 751)
-                {
-                    proffixData.LdgTaxHomebased = 17.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1001)
-                {
-                    proffixData.LdgTaxHomebased = 20.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1251)
-                {
-                    proffixData.LdgTaxHomebased = 22.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 1501)
-                {
-                    proffixData.LdgTaxHomebased = 25.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight < 2001)
-                {
-                    proffixData.LdgTaxHomebased = 30.0m;
-                }
-                else if (proffixData.FlightBoxData.MaxTakeOffWeight > 2000)
-                {
-                    proffixData.LdgTaxHomebased = 40.0m;
-                }
-                else
-                {
-                    proffixData.LdgTaxHomebased = 0;
-                }
-            }
-            else
-            {
-                proffixData.LdgTaxHomebased = 0;
-            }
-
-            //sum up all landing tax fees
-            proffixData.ArticlePrice = proffixData.SchHome + proffixData.SchExternal + proffixData.LdgTaxHomebased +
-                                       proffixData.LdgTaxExternal;
-
-            return proffixData;
-        }
-
-        private void CleanupData(FlightBoxData flightBoxData)
-        {
-            
-        }
-
-        private void CompleteMemberNumbers(FlightBoxData flightBoxData)
-        {
-            if (string.IsNullOrEmpty(flightBoxData.MemberNumber))
-            {
-                if (_dataCleaner.FindLastnameAndAddMemberNumber(flightBoxData))
-                {
-                    OnLogEventRaised($"MemberNumber {flightBoxData.MemberNumber} für {flightBoxData.Lastname} mit {flightBoxData.Immatriculation} gesetzt (Zeile: {flightBoxData.LineNumber}).");
-                }
-            }
+            OnLogEventRaised($"{nrOfLinesExported} Basis-Daten erfolgreich exportiert.");
         }
 
         private List<FlightBoxData> ReadFile()
@@ -371,6 +423,8 @@ namespace FlightBoxExcelConverter
                 var lineNr = 0;
                 var headLines = 0;
                 var errorLines = 0;
+                var additionalLines = 0;
+                FlightBoxData lastLineFlightBoxData = null;
 
                 while (reader.EndOfStream == false)
                 {
@@ -401,6 +455,14 @@ namespace FlightBoxExcelConverter
 
                     if (values.Length < 23)
                     {
+                        if (values.Length == 1 && values.Last().EndsWith("\"") && lastLineFlightBoxData.Remarks.StartsWith("\""))
+                        {
+                            lastLineFlightBoxData.Remarks += values.Last();
+                            additionalLines++;
+                            OnLogEventRaised($"Zeile {lineNr} scheint ein zusätzlicher Kommentar zu sein. Zeileninhalt: {line}");
+                            continue;
+                        }
+
                         errorLines++;
                         OnLogEventRaised($"Fehlerhafte Zeile {lineNr} kann nicht verarbeitet werden. Zeileninhalt: {line}");
                         continue;
@@ -491,9 +553,10 @@ namespace FlightBoxExcelConverter
                     }
 
                     flightBoxDataList.Add(flightBoxData);
+                    lastLineFlightBoxData = flightBoxData;
                 }
 
-                OnLogEventRaised($"Import durchgeführt. {lineNr} Zeilen eingelesen. Davon {headLines} Kopfzeilen, {errorLines} fehlerhafte Zeilen ergibt {flightBoxDataList.Count} Datensätze.");
+                OnLogEventRaised($"Import durchgeführt. {lineNr} Zeilen eingelesen. Davon {headLines} Kopfzeilen, {additionalLines} Zusatzlinien (Kommentare), {errorLines} fehlerhafte Zeilen ergibt {flightBoxDataList.Count} Datensätze.");
             }
 
             return flightBoxDataList;

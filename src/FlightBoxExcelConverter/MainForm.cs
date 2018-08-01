@@ -25,7 +25,7 @@ namespace FlightBoxExcelConverter
             if (File.Exists(Settings.Default.DefaultImportFileName))
                 textBoxImportFileName.Text = Settings.Default.DefaultImportFileName;
 
-            textBoxExportFileName.Text = Settings.Default.DefaultExportFileName;
+            textBoxExportFolderName.Text = Settings.Default.DefaultExportFolderName;
         }
         
         private void buttonBrowseImportFile_Click(object sender, EventArgs e)
@@ -36,19 +36,7 @@ namespace FlightBoxExcelConverter
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                textBoxExportFileName.Text = openFileDialog.FileName;
-            }
-        }
-
-        private void buttonBrowseExportFile_Click(object sender, EventArgs e)
-        {
-            var saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Filter = "Comma separated file|*.csv";
-            saveFileDialog.Title = "Export file";
-
-            if (saveFileDialog.ShowDialog() == DialogResult.OK)
-            {
-                textBoxExportFileName.Text = saveFileDialog.FileName;
+                textBoxImportFileName.Text = openFileDialog.FileName;
             }
         }
 
@@ -56,7 +44,7 @@ namespace FlightBoxExcelConverter
         {
             try
             {
-                if (File.Exists(textBoxExportFileName.Text))
+                if (File.Exists(textBoxExportFolderName.Text))
                 {
                     DialogResult result = MessageBox.Show("Export-Datei existiert bereits. Soll die Datei überschrieben werden?",
                         "Datei überschreiben?", MessageBoxButtons.YesNo, MessageBoxIcon.Asterisk,
@@ -70,7 +58,7 @@ namespace FlightBoxExcelConverter
 
                 textBoxLog.Clear();
 
-                _flightBoxExcelConverter = new FlightBoxExcelConverter(textBoxImportFileName.Text, textBoxExportFileName.Text);
+                _flightBoxExcelConverter = new FlightBoxExcelConverter(textBoxImportFileName.Text, textBoxExportFolderName.Text);
                 _flightBoxExcelConverter.ExportFinished += OnExportFinished;
                 _flightBoxExcelConverter.LogEventRaised += OnLogEventRaised;
                 Thread t = new Thread(new ThreadStart(RunConverter));
@@ -124,6 +112,16 @@ namespace FlightBoxExcelConverter
 
             MessageBox.Show("Daten erfolgreich konvertiert.", "Konvertierung fertiggestellt",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void buttonBrowseExportFolder_Click(object sender, EventArgs e)
+        {
+            FolderBrowserDialog dialog = new FolderBrowserDialog();
+
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                textBoxExportFolderName.Text = dialog.SelectedPath;
+            }
         }
     }
 }

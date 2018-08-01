@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FlightBoxExcelConverter.Enums;
 using LINQtoCSV;
 
 namespace FlightBoxExcelConverter.Objects
@@ -159,5 +160,23 @@ namespace FlightBoxExcelConverter.Objects
         /// REMARKS
         /// </summary>
         public string Remarks { get; set; }
+
+        #region Additional logic properties
+
+        public bool IsTowFlight
+        {
+            get { return TypeOfTraffic == (int) Enums.TypeOfTraffic.Aerotow; }
+        }
+
+        public bool IsMaintenanceFlight { get; set; }
+
+        public bool IsDepartureMovement
+        {
+            get { return MovementType == "D"; }
+        }
+
+        public bool IgnoreLandingTax { get; set; }
+
+        #endregion Additional logic properties
     }
 }
