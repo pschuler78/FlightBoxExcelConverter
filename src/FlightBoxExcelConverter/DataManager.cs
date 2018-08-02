@@ -115,7 +115,7 @@ namespace FlightBoxExcelConverter
         {
             foreach (var lastname in _memberList.Keys)
             {
-                if (lastname.ToLower() == proffixData.FlightBoxData.Lastname.ToLower())
+                if (lastname.Trim().ToLower() == proffixData.FlightBoxData.Lastname.Trim().ToLower())
                 {
                     proffixData.MemberNumber = _memberList[lastname];
                     return true;
@@ -127,7 +127,7 @@ namespace FlightBoxExcelConverter
 
         public bool IsNoLdgTaxMember(ProffixData proffixData)
         {
-            if (_noLdgTaxMembers.Exists(x => x.Contains(proffixData.MemberNumber)))
+            if (_noLdgTaxMembers.Exists(x => x.Contains(proffixData.MemberNumber.Trim())))
             {
                 return true;
             }
@@ -144,7 +144,7 @@ namespace FlightBoxExcelConverter
         {
             foreach (var immatriculation in _memberNrRemapping.Keys)
             {
-                if (immatriculation.ToUpper() == proffixData.FlightBoxData.Immatriculation.ToUpper())
+                if (immatriculation.Trim().ToUpper() == proffixData.FlightBoxData.Immatriculation.Trim().ToUpper())
                 {
                     proffixData.MemberNumber = _memberNrRemapping[immatriculation];
                     return true;

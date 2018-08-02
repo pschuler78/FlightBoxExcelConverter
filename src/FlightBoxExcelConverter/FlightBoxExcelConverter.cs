@@ -17,6 +17,7 @@ namespace FlightBoxExcelConverter
     {
         public event EventHandler<LogEventArgs> LogEventRaised;
         public event EventHandler ExportFinished;
+        private List<string> _logEntries = new List<string>();
 
         public string ImportFileName { get; set; }
 
@@ -41,6 +42,25 @@ namespace FlightBoxExcelConverter
         {
             try
             {
+                ExportErrorMessage = string.Empty;
+                HasExportError = false;
+
+                if (ImportFileName.ToLower().EndsWith(".csv") == false)
+                {
+                    var directory = new DirectoryInfo(ImportFileName);
+                    var lastFile = directory.GetFiles().OrderByDescending(f => f.LastWriteTime).FirstOrDefault();
+
+                    if (lastFile == null)
+                    {
+                        OnLogEventRaised("Konnte keine aktuelle Datei zum Importieren finden!");
+                        throw new ApplicationException($"Konnte keine aktuelle Datei zum Importieren in Verzeichnis {ImportFileName} finden!");
+                    }
+
+                    ImportFileName = lastFile.FullName;
+                    OnLogEventRaised($"Verwende Datei: {ImportFileName}");
+                }
+
+                _logEntries = new List<string>();
                 var flightBoxDataList = ReadFile();
                 var proffixDataList = new List<ProffixData>();
                 CreationTimeStamp = DateTime.Now;
@@ -52,11 +72,13 @@ namespace FlightBoxExcelConverter
                     var proffixData = new ProffixData(flightBoxData);
 
                     // try to find MemberNumber based on name if no MemberNumber is set
-                    if (string.IsNullOrWhiteSpace(flightBoxData.MemberNumber) &&
-                         _dataManager.FindLastnameAndSetMemberNumber(proffixData))
+                    if (string.IsNullOrWhiteSpace(flightBoxData.MemberNumber) || flightBoxData.MemberNumber == "000000")
                     {
-                        OnLogEventRaised(
-                            $"MemberNumber {proffixData.MemberNumber} für {flightBoxData.Lastname} mit {flightBoxData.Immatriculation} gesetzt (Zeile: {flightBoxData.LineNumber}).");
+                        if (_dataManager.FindLastnameAndSetMemberNumber(proffixData))
+                        {
+                            OnLogEventRaised(
+                                $"MemberNumber {proffixData.MemberNumber} für {flightBoxData.Lastname} mit {flightBoxData.Immatriculation} gesetzt (Zeile: {flightBoxData.LineNumber}).");
+                        }
                     }
 
                     // set MemberNumber based on immatriculation
@@ -99,44 +121,110 @@ namespace FlightBoxExcelConverter
 
                     // filtering for tow flights and departure movemements are handled within the FlightBoxData class directly
 
+                    if (string.IsNullOrWhiteSpace(proffixData.MemberNumber) || proffixData.MemberNumber == "000000")
+                    {
+                        ExportErrorMessage +=
+                            $"{Environment.NewLine}Fehlerhafte MemberNumber {proffixData.MemberNumber} für {proffixData.FlightBoxData.Lastname} mit {proffixData.FlightBoxData.Immatriculation} gefunden (Zeile: {proffixData.FlightBoxData.LineNumber}).";
+                        OnLogEventRaised(
+                            $"Fehlerhafte MemberNumber {proffixData.MemberNumber} für {proffixData.FlightBoxData.Lastname} mit {proffixData.FlightBoxData.Immatriculation} gefunden (Zeile: {proffixData.FlightBoxData.LineNumber}).");
+                    }
+
                     CalculateLandingTax(proffixData);
+                }
+
+                if (HasExportError)
+                {
+                    ExportFinished?.Invoke(this, EventArgs.Empty);
+                    return;
                 }
 
                 Thread.Sleep(50);
                 var folder = ExportFolderName + CreationTimeStamp.ToString("yyyy-MM-dd") + "\\";
-                var exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Proffix.csv");
+                var exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_LdgTaxes_without_Remarks (to Import in Proffix).csv");
                 var listToExport = proffixDataList.Where(x => x.FlightBoxData.IsDepartureMovement == false &&
                                                               x.FlightBoxData.IsMaintenanceFlight == false &&
                                                               x.FlightBoxData.IsTowFlight == false &&
-                                                              x.FlightBoxData.IgnoreLandingTax == false)
+                                                              x.FlightBoxData.IgnoreLandingTax == false &&
+                                                              string.IsNullOrWhiteSpace(x.FlightBoxData.Remarks))
                                                               .ToList();
-                OnLogEventRaised($"Exportiere Proffix-Daten in Datei: {exportFilename}");
+                OnLogEventRaised($"Exportiere Proffix-Daten ohne Bemerkungen in Datei: {exportFilename}");
                 var exporter = new ProffixDataCsvExporter(exportFilename, listToExport);
                 exporter.Export();
-                OnLogEventRaised($"{exporter.NumberOfLinesExported} Proffix-Daten erfolgreich exportiert.");
+                OnLogEventRaised($"{exporter.NumberOfLinesExported} Proffix-Daten ohne Bemerkungen erfolgreich exportiert.");
 
                 Thread.Sleep(50);
 
-                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Proffix_Exclusion.csv");
-                listToExport = proffixDataList.Where(x => x.FlightBoxData.IsDepartureMovement ||
-                                                          x.FlightBoxData.IsMaintenanceFlight ||
-                                                          x.FlightBoxData.IsTowFlight ||
-                                                          x.FlightBoxData.IgnoreLandingTax)
+                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_LdgTaxes_with_Remarks (to check and import in Proffix).csv");
+                listToExport = proffixDataList.Where(x => x.FlightBoxData.IsDepartureMovement == false &&
+                                                          x.FlightBoxData.IsMaintenanceFlight == false &&
+                                                          x.FlightBoxData.IsTowFlight == false &&
+                                                          x.FlightBoxData.IgnoreLandingTax == false && 
+                                                          string.IsNullOrWhiteSpace(x.FlightBoxData.Remarks) == false)
                     .ToList();
-                OnLogEventRaised($"Exportiere Nicht-Proffix-Daten in Datei: {exportFilename}");
+                OnLogEventRaised($"Exportiere Daten mit Bemerkungen zur Prüfung und Importieren in Proffix in Datei: {exportFilename}");
                 exporter = new ProffixDataCsvExporter(exportFilename, listToExport);
                 exporter.Export();
-                OnLogEventRaised($"{exporter.NumberOfLinesExported} Nicht-Proffix-Daten erfolgreich exportiert.");
+                OnLogEventRaised($"{exporter.NumberOfLinesExported} Daten mit Bemerkungen zur Prüfung und Importieren in Proffix erfolgreich exportiert.");
 
                 Thread.Sleep(50);
 
-                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Proffix_With_Remarks.csv");
-                listToExport = proffixDataList.Where(x => string.IsNullOrWhiteSpace(x.FlightBoxData.Remarks) == false)
+                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_No_LdgTaxes_without_Remarks (not to import).csv");
+                listToExport = proffixDataList.Where(x => (x.FlightBoxData.IsMaintenanceFlight ||
+                                                           x.FlightBoxData.IsTowFlight ||
+                                                           x.FlightBoxData.IgnoreLandingTax) &&
+                                                          string.IsNullOrWhiteSpace(x.FlightBoxData.Remarks))
                     .ToList();
-                OnLogEventRaised($"Exportiere Daten mit Bemerkungen in Datei: {exportFilename}");
+                OnLogEventRaised($"Exportiere Nicht-Proffix-Daten ohne Bemerkungen in Datei: {exportFilename}");
                 exporter = new ProffixDataCsvExporter(exportFilename, listToExport);
                 exporter.Export();
-                OnLogEventRaised($"{exporter.NumberOfLinesExported} Daten mit Bemerkungen erfolgreich exportiert.");
+                OnLogEventRaised($"{exporter.NumberOfLinesExported} Nicht-Proffix-Daten ohne Bemerkungen erfolgreich exportiert.");
+
+                Thread.Sleep(50);
+
+                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_No_LdgTaxes_with_Remarks (to check and NO import in Proffix).csv");
+                listToExport = proffixDataList.Where(x => (x.FlightBoxData.IsMaintenanceFlight ||
+                                                           x.FlightBoxData.IsTowFlight ||
+                                                           x.FlightBoxData.IgnoreLandingTax) &&
+                                                          string.IsNullOrWhiteSpace(x.FlightBoxData.Remarks) == false)
+                    .ToList();
+                OnLogEventRaised($"Exportiere Daten mit Bemerkungen zur Prüfung und NICHT importieren in Proffix in Datei: {exportFilename}");
+                exporter = new ProffixDataCsvExporter(exportFilename, listToExport);
+                exporter.Export();
+                OnLogEventRaised($"{exporter.NumberOfLinesExported} Daten mit Bemerkungen zur Prüfung und NICHT importieren in Proffix erfolgreich exportiert.");
+
+                Thread.Sleep(50);
+
+                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Heli Sitterdorf.csv");
+                listToExport = proffixDataList.Where(x => x.MemberNumber == "999605" && x.FlightBoxData.IsDepartureMovement == false)
+                    .ToList();
+                OnLogEventRaised($"Exportiere Daten für Heli Sitterdorf in Datei: {exportFilename}");
+                var reportExporter = new ReportExporter(exportFilename, listToExport);
+                reportExporter.Export();
+                OnLogEventRaised($"{reportExporter.NumberOfLinesExported} Daten für Heli Sitterdorf erfolgreich exportiert.");
+
+                Thread.Sleep(50);
+
+                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Skydive.csv");
+                listToExport = proffixDataList.Where(x => x.MemberNumber == "703100" && x.FlightBoxData.IsDepartureMovement == false)
+                    .ToList();
+                OnLogEventRaised($"Exportiere Daten für Skydive in Datei: {exportFilename}");
+                reportExporter = new ReportExporter(exportFilename, listToExport);
+                reportExporter.Export();
+                OnLogEventRaised($"{reportExporter.NumberOfLinesExported} Daten für Skydive erfolgreich exportiert.");
+
+                Thread.Sleep(50);
+
+                exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Swiss oldies.csv");
+                listToExport = proffixDataList.Where(x => x.MemberNumber == "28" && x.FlightBoxData.IsDepartureMovement == false)
+                    .ToList();
+                OnLogEventRaised($"Exportiere Daten für Swiss oldies in Datei: {exportFilename}");
+                reportExporter = new ReportExporter(exportFilename, listToExport);
+                reportExporter.Export();
+                OnLogEventRaised($"{reportExporter.NumberOfLinesExported} Daten für Swiss oldies erfolgreich exportiert.");
+
+                Thread.Sleep(50);
+
+                WriteLogFile();
 
                 Thread.Sleep(50);
 
@@ -344,7 +432,7 @@ namespace FlightBoxExcelConverter
             using (var w = new StreamWriter(exportFilename))
             {
                 var header =
-                    "ARP,TYPMO,ACREG,TYPTR,NUMMO,ORIDE,PAX,DATMO,TIMMO,PIMO,TYPPI,DIRDE,CID,CDT,CDM,KEY,Mitgliedernummer,LASTNAME,MTOW,CLUB,HOME_BASE,ORIGINAL_ORIDE";
+                    "ARP,TYPMO,ACREG,TYPTR,NUMMO,ORIDE,PAX,DATMO,TIMMO,PIMO,TYPPI,DIRDE,CID,CDT,CDM,KEY,Mitgliedernummer,LASTNAME,MTOW,CLUB,HOME_BASE,ORIGINAL_ORIDE,REMARKS";
                 w.WriteLine(header);
 
                 foreach (var proffixData in proffixDataList)
@@ -388,6 +476,8 @@ namespace FlightBoxExcelConverter
                     sb.Append(",");
                     sb.Append(proffixData.FlightBoxData.MaxTakeOffWeight);
                     sb.Append(",");
+                    sb.Append(proffixData.FlightBoxData.Club);
+                    sb.Append(",");
                     if (proffixData.FlightBoxData.IsHomebased)
                     {
                         sb.Append("1");
@@ -404,6 +494,35 @@ namespace FlightBoxExcelConverter
             }
 
             OnLogEventRaised($"{nrOfLinesExported} Basis-Daten erfolgreich exportiert.");
+        }
+
+        private void WriteLogFile()
+        {
+            try
+            {
+                var folder = ExportFolderName + CreationTimeStamp.ToString("yyyy-MM-dd") + "\\";
+
+                if (Directory.Exists(folder) == false)
+                {
+                    Directory.CreateDirectory(folder);
+                }
+
+                var exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_Log.log");
+                
+                using (var w = new StreamWriter(exportFilename))
+                {
+                    foreach (var logEntry in _logEntries)
+                    {
+                        w.WriteLine(logEntry);
+                    }
+
+                    w.Flush();
+                }                                               
+            }
+            catch (Exception e)
+            {
+                OnLogEventRaised($"Konnte Logdatei nicht schreiben. Fehlermeldung: {e.Message}");
+            }
         }
 
         private List<FlightBoxData> ReadFile()
@@ -564,6 +683,7 @@ namespace FlightBoxExcelConverter
 
         private void OnLogEventRaised(string text)
         {
+            _logEntries.Add(text);
             LogEventRaised?.Invoke(this, new LogEventArgs(text));
         }
     }

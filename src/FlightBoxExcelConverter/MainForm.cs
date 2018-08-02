@@ -22,8 +22,15 @@ namespace FlightBoxExcelConverter
         {
             InitializeComponent();
 
-            if (File.Exists(Settings.Default.DefaultImportFileName))
+            if (Settings.Default.DefaultImportFileName.ToLower().EndsWith(".csv"))
+            {
+                if (File.Exists(Settings.Default.DefaultImportFileName))
+                    textBoxImportFileName.Text = Settings.Default.DefaultImportFileName;
+            }
+            else
+            {
                 textBoxImportFileName.Text = Settings.Default.DefaultImportFileName;
+            }
 
             textBoxExportFolderName.Text = Settings.Default.DefaultExportFolderName;
         }
@@ -44,6 +51,7 @@ namespace FlightBoxExcelConverter
         {
             try
             {
+                buttonConvert.Enabled = false;
                 if (File.Exists(textBoxExportFolderName.Text))
                 {
                     DialogResult result = MessageBox.Show("Export-Datei existiert bereits. Soll die Datei überschrieben werden?",
@@ -69,6 +77,7 @@ namespace FlightBoxExcelConverter
             {
                 MessageBox.Show($"Fehler beim Konvertieren: {exception.Message}", "Fehler", MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+                buttonConvert.Enabled = true;
             }
         }
 
@@ -112,6 +121,8 @@ namespace FlightBoxExcelConverter
 
             MessageBox.Show("Daten erfolgreich konvertiert.", "Konvertierung fertiggestellt",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            buttonConvert.Enabled = true;
         }
 
         private void buttonBrowseExportFolder_Click(object sender, EventArgs e)

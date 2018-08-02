@@ -28,7 +28,7 @@ namespace FlightBoxExcelConverter.Exporter
             using (var w = new StreamWriter(_exportFilename))
             {
                 var header =
-                    "ARP,TYPMO,ACREG,TYPTR,NUMMO,ORIDE,PAX,DATMO,TIMMO,PIMO,TYPPI,DIRDE,CID,CDT,CDM,KEY,Mitgliedernummer,LASTNAME,MTOW,CLUB,HOME_BASE,ORIGINAL_ORIDE,Mitgliedernummer,ArtikelNr,ArtMenge,ArtPreis,VFSArtikelNr,VFSMenge,VFSPreis,SchSpeck,SchFremd,HB,Fremd";
+                    "ARP,TYPMO,ACREG,TYPTR,NUMMO,ORIDE,PAX,DATMO,TIMMO,PIMO,TYPPI,DIRDE,CID,CDT,CDM,KEY,Mitgliedernummer,LASTNAME,MTOW,CLUB,HOME_BASE,ORIGINAL_ORIDE,REMARKS,Mitgliedernummer,ArtikelNr,ArtMenge,ArtPreis,VFSArtikelNr,VFSMenge,VFSPreis,SchSpeck,SchFremd,HB,Fremd";
                 w.WriteLine(header);
 
                 foreach (var proffixData in _proffixDataList)
@@ -71,6 +71,8 @@ namespace FlightBoxExcelConverter.Exporter
                     sb.Append(proffixData.FlightBoxData.Lastname);
                     sb.Append(",");
                     sb.Append(proffixData.FlightBoxData.MaxTakeOffWeight);
+                    sb.Append(",");
+                    sb.Append(proffixData.FlightBoxData.Club);
                     sb.Append(",");
                     if (proffixData.FlightBoxData.IsHomebased)
                     {

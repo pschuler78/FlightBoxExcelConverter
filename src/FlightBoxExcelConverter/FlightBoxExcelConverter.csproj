@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Enums\TypeOfTraffic.cs" />
+    <Compile Include="Exporter\ReportExporter.cs" />
     <Compile Include="Exporter\ProffixDataCsvExporter.cs" />
     <Compile Include="FlightBoxExcelConverter.cs" />
     <Compile Include="LogEventArgs.cs" />
