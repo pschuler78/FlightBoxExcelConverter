@@ -7,6 +7,7 @@ using System.Security.Permissions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using CsvHelper;
 using FlightBoxExcelConverter.Enums;
 using FlightBoxExcelConverter.Exporter;
 using FlightBoxExcelConverter.Objects;
@@ -30,7 +31,7 @@ namespace FlightBoxExcelConverter
 
         public string ExportErrorMessage { get; set; }
 
-        private DataManager _dataManager;
+        private readonly DataManager _dataManager;
 
         public FlightBoxExcelConverter(string importFileName, string exportFolderName, bool ignoreDateRange)
         {
@@ -715,6 +716,16 @@ namespace FlightBoxExcelConverter
                         OnLogEventRaised($"Fehlerhafte Zeile {lineNr} kann nicht verarbeitet werden. Zeileninhalt: {line}");
                         continue;
                     }
+                    else if (values.Length > 23)
+                    {
+                        //unescape remarks with commas
+                        for (int i = 23; i < values.Length; i++)
+                        {
+                            values[22] += $",{values[i]}";
+                        }
+
+                        values[22] = values[22].Trim('"');
+                    }
 
                     var flightBoxData = new FlightBoxData();
 
@@ -809,7 +820,7 @@ namespace FlightBoxExcelConverter
 
             return flightBoxDataList;
         }
-
+        
         private void OnLogEventRaised(string text)
         {
             _logEntries.Add(text);

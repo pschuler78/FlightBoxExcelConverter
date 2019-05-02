@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,7 +17,7 @@ namespace FlightBoxExcelConverter
         private Dictionary<string, string> _memberList = new Dictionary<string, string>();
         private List<string> _noLdgTaxMembers = new List<string>();
         private Dictionary<string, string> _memberNrRemapping = new Dictionary<string, string>();
-
+        private List<string> _proffixAddressNrList = new List<string>();
 
         public DataManager()
         {
@@ -108,6 +109,39 @@ namespace FlightBoxExcelConverter
                         _memberNrRemapping.Add(values[0], values[1]);
                     }
                 }
+            }
+        }
+
+        public void ReadProffixDatabase()
+        {
+            try
+            {
+                string queryString = "SELECT [AdressNrADR] FROM [ADR_Adressen] where Geloescht = 0";
+                string connectionString = Settings.Default.ProffixConnectionString;
+
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+                    try
+                    {
+                        while (reader.Read())
+                        {
+                            _proffixAddressNrList.Add(reader[0].ToString());
+                        }
+                    }
+                    finally
+                    {
+                        // Always call Close when done reading.
+                        reader.Close();
+                    }
+                }                   
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
             }
         }
 
