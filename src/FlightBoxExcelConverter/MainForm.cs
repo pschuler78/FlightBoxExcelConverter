@@ -60,6 +60,7 @@ namespace FlightBoxExcelConverter
 
                     if (result == DialogResult.No)
                     {
+                        buttonConvert.Enabled = true;
                         return;
                     }
                 }
@@ -67,6 +68,31 @@ namespace FlightBoxExcelConverter
                 textBoxLog.Clear();
 
                 _flightBoxExcelConverter = new FlightBoxExcelConverter(textBoxImportFileName.Text, textBoxExportFolderName.Text);
+
+                try
+                {
+                    var lastWriteDateTime = _flightBoxExcelConverter.GetLastWriteDateTimeOfImportFileName();
+
+                    if (lastWriteDateTime.AddDays(20) < DateTime.Now)
+                    {
+                        var result = MessageBox.Show($"Achtung: Die zu importierende Datei {_flightBoxExcelConverter.ImportFileName} ist wahrscheinlich veraltet (Datei wurde am {lastWriteDateTime.ToShortDateString()} erstellt)!{Environment.NewLine}Soll diese Datei trotzdem verarbeitet werden?", "Warnung", MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Warning);
+
+                        if (result == DialogResult.No)
+                        {
+                            buttonConvert.Enabled = true;
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Prüfen der Datei: {ex.Message}", "Fehler", MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    buttonConvert.Enabled = true;
+                    return;
+                }
+
                 _flightBoxExcelConverter.ExportFinished += OnExportFinished;
                 _flightBoxExcelConverter.LogEventRaised += OnLogEventRaised;
                 Thread t = new Thread(new ThreadStart(RunConverter));

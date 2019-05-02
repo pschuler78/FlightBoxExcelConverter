@@ -38,6 +38,32 @@ namespace FlightBoxExcelConverter
             _dataManager = new DataManager();
         }
 
+        public DateTime GetLastWriteDateTimeOfImportFileName()
+        {
+            if (ImportFileName.ToLower().EndsWith(".csv") == false)
+            {
+                var directory = new DirectoryInfo(ImportFileName);
+                var lastFile = directory.GetFiles().OrderByDescending(f => f.LastWriteTime).FirstOrDefault();
+
+                if (lastFile == null)
+                {
+                    OnLogEventRaised("Konnte keine aktuelle Datei zum Importieren finden!");
+                    throw new ApplicationException($"Konnte keine aktuelle Datei zum Importieren in Verzeichnis {ImportFileName} finden!");
+                }
+
+                ImportFileName = lastFile.FullName;
+            }
+
+            if (File.Exists(ImportFileName))
+            {
+                var fi = new FileInfo(ImportFileName);
+                return fi.LastWriteTime;
+            }
+
+            //no file to import found or empty file string selected
+            throw new ApplicationException("Konnte keine Datei zum Importieren finden oder es wurde keine Datei zum Importieren ausgewählt!");
+        }
+
         public void Convert()
         {
             try
@@ -119,7 +145,7 @@ namespace FlightBoxExcelConverter
 
                     //TODO: Handle maintenance flights from Seiferle
 
-                    // filtering for tow flights and departure movemements are handled within the FlightBoxData class directly
+                    // filtering for tow flights and departure movements are handled within the FlightBoxData class directly
 
                     if (string.IsNullOrWhiteSpace(proffixData.MemberNumber) || proffixData.MemberNumber == "000000")
                     {
