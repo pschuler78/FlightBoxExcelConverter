@@ -177,6 +177,8 @@ namespace FlightBoxExcelConverter.Objects
 
         public bool IgnoreLandingTax { get; set; }
 
+        public bool IsOlderMovementDate { get; set; }
+
         #endregion Additional logic properties
     }
 }

@@ -15,6 +15,7 @@ namespace FlightBoxExcelConverter
 {
     public class FlightBoxExcelConverter
     {
+        private readonly bool _ignoreDateRange;
         public event EventHandler<LogEventArgs> LogEventRaised;
         public event EventHandler ExportFinished;
         private List<string> _logEntries = new List<string>();
@@ -31,8 +32,9 @@ namespace FlightBoxExcelConverter
 
         private DataManager _dataManager;
 
-        public FlightBoxExcelConverter(string importFileName, string exportFolderName)
+        public FlightBoxExcelConverter(string importFileName, string exportFolderName, bool ignoreDateRange)
         {
+            _ignoreDateRange = ignoreDateRange;
             ImportFileName = importFileName;
             ExportFolderName = exportFolderName;
             _dataManager = new DataManager();
@@ -63,7 +65,7 @@ namespace FlightBoxExcelConverter
             //no file to import found or empty file string selected
             throw new ApplicationException("Konnte keine Datei zum Importieren finden oder es wurde keine Datei zum Importieren ausgewählt!");
         }
-
+        
         public void Convert()
         {
             try
@@ -96,6 +98,27 @@ namespace FlightBoxExcelConverter
                 foreach (var flightBoxData in flightBoxDataList)
                 {
                     var proffixData = new ProffixData(flightBoxData);
+
+                    //check movement date within the valid import range
+                    //we won't import old movement data into proffix
+                    var minMovementDate = new DateTime(DateTime.Now.AddMonths(-1).Year, DateTime.Now.AddMonths(-1).Month, 1);
+
+                    if (flightBoxData.MovementDateTime < minMovementDate)
+                    {
+                        // found movement older than the previous months
+                        flightBoxData.IsOlderMovementDate = true;
+                        OnLogEventRaised(
+                            $"Alte Flugbewegung gefunden vom {flightBoxData.MovementDateTime.ToShortDateString()} (Zeile: {flightBoxData.LineNumber}).");
+
+                        if (_ignoreDateRange == false)
+                        {
+                            ExportErrorMessage = "Alte Flugbewegung wurde gefunden und Warnung bei alten Daten darf nicht ignoriert werden. Verarbeitung wird abgebrochen.";
+                            HasExportError = true;
+                            WriteLogFile();
+                            ExportFinished?.Invoke(this, EventArgs.Empty);
+                            return;
+                        }
+                    }
 
                     // try to find MemberNumber based on name if no MemberNumber is set
                     if (string.IsNullOrWhiteSpace(flightBoxData.MemberNumber) || flightBoxData.MemberNumber == "000000")
@@ -160,12 +183,13 @@ namespace FlightBoxExcelConverter
 
                 if (HasExportError)
                 {
+                    WriteLogFile();
                     ExportFinished?.Invoke(this, EventArgs.Empty);
                     return;
                 }
 
                 Thread.Sleep(50);
-                var folder = ExportFolderName + CreationTimeStamp.ToString("yyyy-MM-dd") + "\\";
+                var folder = Path.Combine(ExportFolderName, CreationTimeStamp.ToString("yyyy-MM-dd"));
                 var exportFilename = Path.Combine(folder, $"{CreationTimeStamp.ToString("yyyy-MM-dd-HHmm")}_LdgTaxes_without_Remarks (to Import in Proffix).csv");
                 var listToExport = proffixDataList.Where(x => x.FlightBoxData.IsDepartureMovement == false &&
                                                               x.FlightBoxData.IsMaintenanceFlight == false &&

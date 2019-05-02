@@ -36,6 +36,7 @@
             this.buttonBrowseExportFolder = new System.Windows.Forms.Button();
             this.buttonConvert = new System.Windows.Forms.Button();
             this.textBoxLog = new System.Windows.Forms.TextBox();
+            this.checkBoxIgnoreDateRange = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // labelImportFile
@@ -112,11 +113,22 @@
             this.textBoxLog.Size = new System.Drawing.Size(716, 282);
             this.textBoxLog.TabIndex = 4;
             // 
+            // checkBoxIgnoreDateRange
+            // 
+            this.checkBoxIgnoreDateRange.AutoSize = true;
+            this.checkBoxIgnoreDateRange.Location = new System.Drawing.Point(209, 121);
+            this.checkBoxIgnoreDateRange.Name = "checkBoxIgnoreDateRange";
+            this.checkBoxIgnoreDateRange.Size = new System.Drawing.Size(189, 17);
+            this.checkBoxIgnoreDateRange.TabIndex = 5;
+            this.checkBoxIgnoreDateRange.Text = "Ignoriere Warnung bei alten Daten";
+            this.checkBoxIgnoreDateRange.UseVisualStyleBackColor = true;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.checkBoxIgnoreDateRange);
             this.Controls.Add(this.textBoxLog);
             this.Controls.Add(this.buttonConvert);
             this.Controls.Add(this.buttonBrowseExportFolder);
@@ -142,6 +154,7 @@
         private System.Windows.Forms.Button buttonBrowseExportFolder;
         private System.Windows.Forms.Button buttonConvert;
         private System.Windows.Forms.TextBox textBoxLog;
+        private System.Windows.Forms.CheckBox checkBoxIgnoreDateRange;
     }
 }
 

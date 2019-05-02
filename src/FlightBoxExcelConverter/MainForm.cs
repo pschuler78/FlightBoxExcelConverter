@@ -16,6 +16,7 @@ namespace FlightBoxExcelConverter
     public partial class MainForm : Form
     {
         delegate void StringArgReturningVoidDelegate(string text);
+        delegate void BooleanArgReturningVoidDelegate(bool value);
         private FlightBoxExcelConverter _flightBoxExcelConverter;
 
         public MainForm()
@@ -51,7 +52,7 @@ namespace FlightBoxExcelConverter
         {
             try
             {
-                buttonConvert.Enabled = false;
+                SetButtonEnabled(false);
                 if (File.Exists(textBoxExportFolderName.Text))
                 {
                     DialogResult result = MessageBox.Show("Export-Datei existiert bereits. Soll die Datei überschrieben werden?",
@@ -60,14 +61,14 @@ namespace FlightBoxExcelConverter
 
                     if (result == DialogResult.No)
                     {
-                        buttonConvert.Enabled = true;
+                        SetButtonEnabled(true);
                         return;
                     }
                 }
 
                 textBoxLog.Clear();
 
-                _flightBoxExcelConverter = new FlightBoxExcelConverter(textBoxImportFileName.Text, textBoxExportFolderName.Text);
+                _flightBoxExcelConverter = new FlightBoxExcelConverter(textBoxImportFileName.Text, textBoxExportFolderName.Text, checkBoxIgnoreDateRange.Checked);
 
                 try
                 {
@@ -80,7 +81,7 @@ namespace FlightBoxExcelConverter
 
                         if (result == DialogResult.No)
                         {
-                            buttonConvert.Enabled = true;
+                            SetButtonEnabled(true);
                             return;
                         }
                     }
@@ -89,7 +90,7 @@ namespace FlightBoxExcelConverter
                 {
                     MessageBox.Show($"Fehler beim Prüfen der Datei: {ex.Message}", "Fehler", MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
-                    buttonConvert.Enabled = true;
+                    SetButtonEnabled(true);
                     return;
                 }
 
@@ -103,7 +104,7 @@ namespace FlightBoxExcelConverter
             {
                 MessageBox.Show($"Fehler beim Konvertieren: {exception.Message}", "Fehler", MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
-                buttonConvert.Enabled = true;
+                SetButtonEnabled(true);
             }
         }
 
@@ -128,6 +129,22 @@ namespace FlightBoxExcelConverter
             }
         }
 
+        private void SetButtonEnabled(bool enabled)
+        {
+            // InvokeRequired required compares the thread ID of the  
+            // calling thread to the thread ID of the creating thread.  
+            // If these threads are different, it returns true.  
+            if (buttonConvert.InvokeRequired)
+            {
+                BooleanArgReturningVoidDelegate d = new BooleanArgReturningVoidDelegate(SetButtonEnabled);
+                Invoke(d, new object[] { enabled });
+            }
+            else
+            {
+                buttonConvert.Enabled = enabled;
+            }
+        }
+
         private void OnLogEventRaised(object sender, LogEventArgs logEventArgs)
         {
             SetText($"{logEventArgs.Text}{Environment.NewLine}");
@@ -142,13 +159,14 @@ namespace FlightBoxExcelConverter
             {
                 MessageBox.Show($"Fehler beim Konvertieren der Daten.{Environment.NewLine}{Environment.NewLine}Fehler-Meldung:{Environment.NewLine}{_flightBoxExcelConverter.ExportErrorMessage}", "Fehler",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+            }
+            else
+            {
+                MessageBox.Show("Daten erfolgreich konvertiert.", "Konvertierung fertiggestellt",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
 
-            MessageBox.Show("Daten erfolgreich konvertiert.", "Konvertierung fertiggestellt",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            buttonConvert.Enabled = true;
+            SetButtonEnabled(true);
         }
 
         private void buttonBrowseExportFolder_Click(object sender, EventArgs e)
