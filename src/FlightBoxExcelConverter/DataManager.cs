@@ -185,6 +185,9 @@ namespace FlightBoxExcelConverter
 
         public bool FindMemberNumberInProffix(ProffixData proffixData)
         {
+            if (Settings.Default.ReadProffixDbData == false)
+                return true;
+
             if (_proffixAddressNumbers.Contains(proffixData.FlightBoxData.MemberNumber.Trim().ToUpper()))
             {
                 return true;
