@@ -20,5 +20,8 @@
     <Setting Name="ProffixConnectionString" Type="System.String" Scope="Application">
       <Value Profile="(Default)">Server=.\PDATA_SQLEXPRESS;Database=;User Id=sa;Password=2BeChanged!;</Value>
     </Setting>
+    <Setting Name="ReadProffixDbData" Type="System.Boolean" Scope="Application">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

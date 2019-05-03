@@ -76,5 +76,14 @@ namespace FlightBoxExcelConverter.Properties {
                 return ((string)(this["ProffixConnectionString"]));
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool ReadProffixDbData {
+            get {
+                return ((bool)(this["ReadProffixDbData"]));
+            }
+        }
     }
 }

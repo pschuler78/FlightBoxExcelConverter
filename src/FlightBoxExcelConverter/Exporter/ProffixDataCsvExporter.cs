@@ -81,7 +81,7 @@ namespace FlightBoxExcelConverter.Exporter
                     sb.Append(",");
                     sb.Append(proffixData.FlightBoxData.OriginalLocation);
                     sb.Append(",");
-                    sb.Append(proffixData.FlightBoxData.Remarks);
+                    sb.Append(AddEscapeSequenceInCsvField(proffixData.FlightBoxData.Remarks));
                     sb.Append(",");
                     sb.Append(proffixData.MemberNumber);
                     sb.Append(",");
@@ -109,6 +109,25 @@ namespace FlightBoxExcelConverter.Exporter
                 }
 
                 w.Flush();
+            }
+        }
+
+        private string AddEscapeSequenceInCsvField(string valueToEscape)
+        {
+            if (string.IsNullOrEmpty(valueToEscape))
+                return string.Empty;
+
+            if (valueToEscape.Contains(","))
+            {
+
+                //*you might need to handle if it contains a quote*
+                //Wrap with quotes.
+                return "\"" + valueToEscape + "\"";
+            }
+            else
+            {
+                //no commas
+                return valueToEscape;
             }
         }
     }

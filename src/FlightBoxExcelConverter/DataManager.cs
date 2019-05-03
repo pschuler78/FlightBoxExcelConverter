@@ -17,7 +17,7 @@ namespace FlightBoxExcelConverter
         private Dictionary<string, string> _memberList = new Dictionary<string, string>();
         private List<string> _noLdgTaxMembers = new List<string>();
         private Dictionary<string, string> _memberNrRemapping = new Dictionary<string, string>();
-        private List<string> _proffixAddressNrList = new List<string>();
+        private List<string> _proffixAddressNumbers = new List<string>();
 
         public DataManager()
         {
@@ -114,34 +114,29 @@ namespace FlightBoxExcelConverter
 
         public void ReadProffixDatabase()
         {
-            try
-            {
-                string queryString = "SELECT [AdressNrADR] FROM [ADR_Adressen] where Geloescht = 0";
-                string connectionString = Settings.Default.ProffixConnectionString;
+            if (Settings.Default.ReadProffixDbData == false)
+                return;
 
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    SqlCommand command = new SqlCommand(queryString, connection);
-                    connection.Open();
-                    SqlDataReader reader = command.ExecuteReader();
-                    try
-                    {
-                        while (reader.Read())
-                        {
-                            _proffixAddressNrList.Add(reader[0].ToString());
-                        }
-                    }
-                    finally
-                    {
-                        // Always call Close when done reading.
-                        reader.Close();
-                    }
-                }                   
-            }
-            catch (Exception e)
+            string queryString = "SELECT [AdressNrADR] FROM [ADR_Adressen] where Geloescht = 0";
+            string connectionString = Settings.Default.ProffixConnectionString;
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                Console.WriteLine(e);
-                throw;
+                SqlCommand command = new SqlCommand(queryString, connection);
+                connection.Open();
+                SqlDataReader reader = command.ExecuteReader();
+                try
+                {
+                    while (reader.Read())
+                    {
+                        _proffixAddressNumbers.Add(reader[0].ToString());
+                    }
+                }
+                finally
+                {
+                    // Always call Close when done reading.
+                    reader.Close();
+                }
             }
         }
 
@@ -185,6 +180,17 @@ namespace FlightBoxExcelConverter
                 }
             }
 
+            return false;
+        }
+
+        public bool FindMemberNumberInProffix(ProffixData proffixData)
+        {
+            if (_proffixAddressNumbers.Contains(proffixData.FlightBoxData.MemberNumber.Trim().ToUpper()))
+            {
+                return true;
+            }
+
+            proffixData.FlightBoxData.MemberNumberInProffixNotFound = true;
             return false;
         }
     }

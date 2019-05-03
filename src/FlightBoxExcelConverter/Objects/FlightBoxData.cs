@@ -173,6 +173,8 @@ namespace FlightBoxExcelConverter.Objects
 
         public bool IsOlderMovementDate { get; set; }
 
+        public bool MemberNumberInProffixNotFound { get; set; }
+
         #endregion Additional logic properties
     }
 }
