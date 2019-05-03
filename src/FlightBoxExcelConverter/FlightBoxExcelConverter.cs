@@ -181,6 +181,8 @@ namespace FlightBoxExcelConverter
 
                     if (string.IsNullOrWhiteSpace(proffixData.MemberNumber) || proffixData.MemberNumber == "000000")
                     {
+                        proffixData.FlightBoxData.MemberNumberInProffixNotFound = true;
+
                         ExportErrorMessage +=
                             $"{Environment.NewLine}Fehlerhafte MemberNumber {proffixData.MemberNumber} für {proffixData.FlightBoxData.Lastname} mit {proffixData.FlightBoxData.Immatriculation} gefunden (Zeile: {proffixData.FlightBoxData.LineNumber}).";
                         OnLogEventRaised(
