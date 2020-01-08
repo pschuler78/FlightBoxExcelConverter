@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CsvHelper;
 using FlightBoxExcelConverter.Enums;
 using FlightBoxExcelConverter.Objects;
 using FlightBoxExcelConverter.Properties;
@@ -22,6 +23,7 @@ namespace FlightBoxExcelConverter
         public DataManager()
         {
             var file = Settings.Default.MemberListFileName;
+            var lineNr = 0;
 
             if (Path.IsPathRooted(file) == false)
             {
@@ -38,12 +40,16 @@ namespace FlightBoxExcelConverter
                     while (reader.EndOfStream == false)
                     {
                         var line = reader.ReadLine();
+                        lineNr++;
 
                         if (line == null || string.IsNullOrEmpty(line) || line.StartsWith("Lastname,")) continue;
 
                         var values = line.Split(',');
 
-                        if (values.Length < 2) continue;
+                        if (values.Length < 2)
+                        {
+                            throw new FormatException($"Fehlerhafte Zeile {lineNr} in Konfigurations-Datei: {file}");
+                        };
 
                         _memberList.Add(values[0], values[1]);
                     }
@@ -51,6 +57,7 @@ namespace FlightBoxExcelConverter
             }
 
             file = Settings.Default.NoLdgTaxMembersFileName;
+            lineNr = 0;
 
             if (Path.IsPathRooted(file) == false)
             {
@@ -67,13 +74,17 @@ namespace FlightBoxExcelConverter
                     while (reader.EndOfStream == false)
                     {
                         var line = reader.ReadLine();
+                        lineNr++;
 
                         if (line == null || string.IsNullOrEmpty(line) || line.StartsWith("MemberNumber,"))
                             continue;
 
                         var values = line.Split(',');
 
-                        if (values.Length < 2) continue;
+                        if (values.Length < 2)
+                        {
+                            throw new FormatException($"Fehlerhafte Zeile {lineNr} in Konfigurations-Datei: {file}");
+                        };
 
                         _noLdgTaxMembers.Add(values[0]);
                     }
@@ -82,6 +93,7 @@ namespace FlightBoxExcelConverter
             
 
             file = Settings.Default.MemberNumberRemappingFileName;
+            lineNr = 0;
 
             if (Path.IsPathRooted(file) == false)
             {
@@ -98,13 +110,17 @@ namespace FlightBoxExcelConverter
                     while (reader.EndOfStream == false)
                     {
                         var line = reader.ReadLine();
+                        lineNr++;
 
                         if (line == null || string.IsNullOrEmpty(line) || line.StartsWith("Immatriculation,"))
                             continue;
 
                         var values = line.Split(',');
 
-                        if (values.Length < 2) continue;
+                        if (values.Length < 2)
+                        {
+                            throw new FormatException($"Fehlerhafte Zeile {lineNr} in Konfigurations-Datei: {file}");
+                        };
 
                         _memberNrRemapping.Add(values[0], values[1]);
                     }
@@ -156,6 +172,9 @@ namespace FlightBoxExcelConverter
 
         public bool IsNoLdgTaxMember(ProffixData proffixData)
         {
+            if (string.IsNullOrWhiteSpace(proffixData.MemberNumber.Trim()))
+                return false;
+
             if (_noLdgTaxMembers.Exists(x => x.Contains(proffixData.MemberNumber.Trim())))
             {
                 return true;
@@ -188,12 +207,12 @@ namespace FlightBoxExcelConverter
             if (Settings.Default.ReadProffixDbData == false)
                 return true;
 
-            if (_proffixAddressNumbers.Contains(proffixData.FlightBoxData.MemberNumber.Trim().ToUpper()))
+            if (_proffixAddressNumbers.Contains(proffixData.MemberNumber.Trim().ToUpper()))
             {
                 return true;
             }
 
-            proffixData.FlightBoxData.MemberNumberInProffixNotFound = true;
+            proffixData.MemberNumberInProffixNotFound = true;
             return false;
         }
     }

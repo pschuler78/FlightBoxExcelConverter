@@ -64,5 +64,7 @@
         /// CSV column name: Fremd
         /// </summary>
         public decimal LdgTaxExternal { get; set; }
+
+        public bool MemberNumberInProffixNotFound { get; set; }
     }
 }

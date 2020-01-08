@@ -11,6 +11,7 @@ using CsvHelper;
 using FlightBoxExcelConverter.Enums;
 using FlightBoxExcelConverter.Exporter;
 using FlightBoxExcelConverter.Objects;
+using FlightBoxExcelConverter.Properties;
 
 namespace FlightBoxExcelConverter
 {
@@ -99,6 +100,15 @@ namespace FlightBoxExcelConverter
 
                 OnLogEventRaised("Bereinige Basis-Daten...");
 
+                if (Settings.Default.ReadProffixDbData)
+                {
+                    OnLogEventRaised("Mitgliedernummern werden anhand der Proffix-Datenbank überprüft");
+                }
+                else
+                {
+                    OnLogEventRaised("Proffix-Datenbank wird für die Mitgliedernummer-Prüfung nicht verwendet!");
+                }
+
                 foreach (var flightBoxData in flightBoxDataList)
                 {
                     var proffixData = new ProffixData(flightBoxData);
@@ -140,9 +150,9 @@ namespace FlightBoxExcelConverter
                         OnLogEventRaised($"Setze spezielle Mitgliedernummer für {proffixData.FlightBoxData.Immatriculation} (Zeile: {flightBoxData.LineNumber}): Alte Mitgliedernummer {proffixData.FlightBoxData.MemberNumber}, neue Mitgliedernummer {proffixData.MemberNumber}");
                     }
 
-                    if (_dataManager.FindMemberNumberInProffix(proffixData))
+                    if (Settings.Default.ReadProffixDbData && _dataManager.FindMemberNumberInProffix(proffixData))
                     {
-                        OnLogEventRaised($"Mitgliedernummer {proffixData.FlightBoxData.MemberNumber} in Proffix-Datenbank nicht gefunden (Zeile: {flightBoxData.LineNumber})");
+                        OnLogEventRaised($"Mitgliedernummer {proffixData.MemberNumber} für {proffixData.FlightBoxData.Lastname} mit {proffixData.FlightBoxData.Immatriculation} in Proffix-Datenbank nicht gefunden (Zeile: {flightBoxData.LineNumber})");
                     }
 
                     proffixDataList.Add(proffixData);
@@ -181,7 +191,7 @@ namespace FlightBoxExcelConverter
 
                     if (string.IsNullOrWhiteSpace(proffixData.MemberNumber) || proffixData.MemberNumber == "000000")
                     {
-                        proffixData.FlightBoxData.MemberNumberInProffixNotFound = true;
+                        proffixData.MemberNumberInProffixNotFound = true;
 
                         ExportErrorMessage +=
                             $"{Environment.NewLine}Fehlerhafte MemberNumber {proffixData.MemberNumber} für {proffixData.FlightBoxData.Lastname} mit {proffixData.FlightBoxData.Immatriculation} gefunden (Zeile: {proffixData.FlightBoxData.LineNumber}).";
@@ -208,7 +218,7 @@ namespace FlightBoxExcelConverter
                                                               x.FlightBoxData.IsTowFlight == false &&
                                                               x.FlightBoxData.IgnoreLandingTax == false &&
                                                               string.IsNullOrWhiteSpace(x.FlightBoxData.Remarks) &&
-                                                              x.FlightBoxData.MemberNumberInProffixNotFound == false)
+                                                              x.MemberNumberInProffixNotFound == false)
                                                               .ToList();
 
                 if (listToExport.Any())
@@ -233,7 +243,7 @@ namespace FlightBoxExcelConverter
                                                               x.FlightBoxData.IsMaintenanceFlight == false &&
                                                               x.FlightBoxData.IsTowFlight == false &&
                                                               x.FlightBoxData.IgnoreLandingTax == false &&
-                                                              x.FlightBoxData.MemberNumberInProffixNotFound)
+                                                              x.MemberNumberInProffixNotFound)
                     .ToList();
 
                 if (listToExport.Any())
@@ -259,7 +269,7 @@ namespace FlightBoxExcelConverter
                                                           x.FlightBoxData.IsTowFlight == false &&
                                                           x.FlightBoxData.IgnoreLandingTax == false && 
                                                           string.IsNullOrWhiteSpace(x.FlightBoxData.Remarks) == false &&
-                                                          x.FlightBoxData.MemberNumberInProffixNotFound == false)
+                                                          x.MemberNumberInProffixNotFound == false)
                     .ToList();
 
                 if (listToExport.Any())
