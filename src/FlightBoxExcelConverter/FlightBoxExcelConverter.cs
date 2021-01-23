@@ -76,7 +76,7 @@ namespace FlightBoxExcelConverter
                 HasExportError = false;
 
                 //loading proffix address numbers from database
-                _dataManager.ReadProffixDatabase();
+                var nrOfAddressesFromProffixRead = _dataManager.ReadProffixDatabase();
 
                 if (ImportFileName.ToLower().EndsWith(".csv") == false)
                 {
@@ -102,7 +102,7 @@ namespace FlightBoxExcelConverter
 
                 if (Settings.Default.ReadProffixDbData)
                 {
-                    OnLogEventRaised("Mitgliedernummern werden anhand der Proffix-Datenbank überprüft");
+                    OnLogEventRaised($"Mitgliedernummern werden anhand der Proffix-Datenbank überprüft. {nrOfAddressesFromProffixRead} Adressen aus Proffix geladen.");
                 }
                 else
                 {
@@ -150,7 +150,7 @@ namespace FlightBoxExcelConverter
                         OnLogEventRaised($"Setze spezielle Mitgliedernummer für {proffixData.FlightBoxData.Immatriculation} (Zeile: {flightBoxData.LineNumber}): Alte Mitgliedernummer {proffixData.FlightBoxData.MemberNumber}, neue Mitgliedernummer {proffixData.MemberNumber}");
                     }
 
-                    if (Settings.Default.ReadProffixDbData && _dataManager.FindMemberNumberInProffix(proffixData))
+                    if (Settings.Default.ReadProffixDbData && _dataManager.FindMemberNumberInProffix(proffixData) == false)
                     {
                         OnLogEventRaised($"Mitgliedernummer {proffixData.MemberNumber} für {proffixData.FlightBoxData.Lastname} mit {proffixData.FlightBoxData.Immatriculation} in Proffix-Datenbank nicht gefunden (Zeile: {flightBoxData.LineNumber})");
                     }

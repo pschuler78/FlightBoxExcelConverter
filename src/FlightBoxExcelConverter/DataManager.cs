@@ -128,10 +128,10 @@ namespace FlightBoxExcelConverter
             }
         }
 
-        public void ReadProffixDatabase()
+        public int ReadProffixDatabase()
         {
             if (Settings.Default.ReadProffixDbData == false)
-                return;
+                return -1;
 
             string queryString = "SELECT [AdressNrADR] FROM [ADR_Adressen] where Geloescht = 0";
             string connectionString = Settings.Default.ProffixConnectionString;
@@ -154,6 +154,8 @@ namespace FlightBoxExcelConverter
                     reader.Close();
                 }
             }
+
+            return _proffixAddressNumbers.Count;
         }
 
         public bool FindLastnameAndSetMemberNumber(ProffixData proffixData)
